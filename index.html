@@ -1534,6 +1534,10 @@ html, body {
    DATA
    ──────────────────────────────────────── */
 
+// ← Ganti URL ini setelah deploy ke Vercel
+const VERCEL_URL = '
+project-sh8cs-git-main-lensera-booth-s-projects.vercel.app';
+
 const DEFAULT_PACKAGES = [
   { id:'basic',  name:'Basic',  price:'Rp10.000', priceNum:10000, photos:3,  frames:1,  time:180, featured:false, badge:null },
   { id:'bestie', name:'Bestie', price:'Rp20.000', priceNum:20000, photos:6,  frames:3,  time:300, featured:true,  badge:'★ POPULAR' },
@@ -2236,33 +2240,30 @@ function generateQR() {
   const container = document.getElementById('qrCanvas');
   if (!container) return;
 
-  // URL to encode: the deployed Vercel URL (or current origin)
-  const url = window.location.origin + window.location.pathname;
+  // Pakai VERCEL_URL jika sudah di-set, fallback ke current origin
+  const url = (typeof VERCEL_URL !== 'undefined' && VERCEL_URL)
+    ? VERCEL_URL
+    : window.location.origin + window.location.pathname;
 
-  // Clear previous QR
   container.innerHTML = '';
   _qrInstance = null;
 
   if (typeof QRCode === 'undefined') {
-    // qrcode.js not loaded yet — show plain URL text fallback
-    container.style.fontSize = '8px';
-    container.style.wordBreak = 'break-all';
-    container.style.color = '#333';
-    container.style.padding = '10px';
+    container.style.cssText = 'font-size:9px;word-break:break-all;color:#333;padding:8px;';
     container.textContent = url;
     return;
   }
 
   try {
     _qrInstance = new QRCode(container, {
-      text:           url,
-      width:          92,
-      height:         92,
-      colorDark:      '#1A1018',
-      colorLight:     '#ffffff',
-      correctLevel:   QRCode.CorrectLevel.M,
+      text:         url,
+      width:        160,
+      height:       160,
+      colorDark:    '#1A1018',
+      colorLight:   '#ffffff',
+      correctLevel: QRCode.CorrectLevel.H,
     });
-  } catch (e) {
+  } catch(e) {
     container.textContent = url;
   }
 }
