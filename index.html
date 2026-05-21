@@ -801,21 +801,49 @@ html, body {
   animation: fadeUp 0.5s 0.15s ease both;
 }
 .preview-qr-canvas {
-  border-radius: 10px;
+  border-radius: 12px;
   background: white;
   padding: 8px;
-  width: 108px; height: 108px;
+  width: 176px; height: 176px;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  position: relative;
 }
 .preview-qr-canvas img,
 .preview-qr-canvas canvas {
-  width: 92px !important;
-  height: 92px !important;
+  width: 160px !important;
+  height: 160px !important;
   display: block;
 }
+/* Upload spinner overlay */
+.qr-uploading {
+  position: absolute;
+  inset: 0;
+  background: white;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.qr-spinner {
+  width: 28px; height: 28px;
+  border: 3px solid #F2C4CE;
+  border-top-color: #D4899A;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+.qr-upload-text {
+  font-size: 9px;
+  color: #D4899A;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-family: 'DM Sans', sans-serif;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 .preview-qr-label {
   font-size: 9px;
   letter-spacing: 3px;
@@ -1399,7 +1427,7 @@ html, body {
   </div>
   <div class="preview-qr-wrap" id="qrWrap">
     <div id="qrCanvas" class="preview-qr-canvas"></div>
-    <div class="preview-qr-label">Scan · Buka Foto Booth</div>
+    <div class="preview-qr-label" id="qrLabel">Scan · Simpan Foto</div>
   </div>
   <button class="btn-new-session" onclick="restartSession()">✦ Mulai Sesi Baru</button>
 </div>
@@ -1535,8 +1563,10 @@ html, body {
    ──────────────────────────────────────── */
 
 // ← Ganti URL ini setelah deploy ke Vercel
-const VERCEL_URL = '
-project-sh8cs-git-main-lensera-booth-s-projects.vercel.app';
+const VERCEL_URL = 'https://lensera-fotobooth.vercel.app';
+
+// ← Daftar gratis di https://api.imgbb.com lalu paste API key di sini
+const 2e0b4ce0f2bcf42efd4631b458713783 = '';
 
 const DEFAULT_PACKAGES = [
   { id:'basic',  name:'Basic',  price:'Rp10.000', priceNum:10000, photos:3,  frames:1,  time:180, featured:false, badge:null },
@@ -2064,6 +2094,7 @@ function renderPreview() {
     `<div class="preview-strip-brand" style="color:${frame.textColor}">✦ LENSERA ✦</div>`;
 
   spawnConfetti();
+  uploadAndGenerateQR();
 }
 
 function spawnConfetti() {
@@ -2088,49 +2119,39 @@ function spawnConfetti() {
    DOWNLOAD — Real canvas frame rendering
    ──────────────────────────────────────── */
 
-function downloadStrip() {
-  stats.downloads++;
-  saveStats();
-
+// Build the strip canvas and call onDone(canvas) when all photos are loaded
+function buildStripCanvas(onDone) {
   const frame  = FRAMES.find(f => f.id === state.selectedFrame) || FRAMES[0];
   const photos = state.selectedPhotos.length > 0
     ? state.selectedPhotos.slice(0, 4).map(i => state.capturedPhotos[i])
     : state.capturedPhotos.slice(0, 4);
 
-  if (photos.length === 0) { alert('Tidak ada foto yang dipilih!'); return; }
+  if (photos.length === 0) return null;
 
-  const W      = 640;
-  const PH     = 480;   // photo height (4:3 landscape style strip)
-  const PAD    = 22;
-  const BRAND  = 70;
-  const H      = PAD + photos.length * (PH + PAD) + BRAND;
+  const W     = 640;
+  const PH    = 480;
+  const PAD   = 22;
+  const BRAND = 70;
+  const H     = PAD + photos.length * (PH + PAD) + BRAND;
 
   const canvas = document.createElement('canvas');
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext('2d');
 
-  // Background
   ctx.fillStyle = frame.bg;
   ctx.fillRect(0, 0, W, H);
-
-  // Frame decorations based on borderStyle
   drawFrameDecoration(ctx, frame, W, H, PAD, photos.length, PH);
 
-  // Load and draw photos
   let loaded = 0;
   photos.forEach((src, i) => {
     const img = new Image();
     img.onload = () => {
-      const y = PAD + i * (PH + PAD);
+      const y      = PAD + i * (PH + PAD);
       const innerW = W - PAD * 2;
       ctx.save();
-
-      // Rounded clip
       ctx.beginPath();
       ctx.roundRect(PAD, y, innerW, PH, 8);
       ctx.clip();
-
-      // Draw photo (cover fit)
       const iAR = img.width / img.height;
       const bAR = innerW / PH;
       let dw, dh, dx, dy;
@@ -2139,14 +2160,12 @@ function downloadStrip() {
       ctx.drawImage(img, dx, dy, dw, dh);
       ctx.restore();
 
-      // Border
       ctx.strokeStyle = frame.accent;
       ctx.lineWidth = frame.borderStyle === 'double' ? 6 : 4;
       ctx.beginPath();
       ctx.roundRect(PAD, y, innerW, PH, 8);
       ctx.stroke();
 
-      // Double border
       if (frame.borderStyle === 'double') {
         ctx.strokeStyle = frame.accent + '66';
         ctx.lineWidth = 1.5;
@@ -2154,32 +2173,110 @@ function downloadStrip() {
         ctx.roundRect(PAD+8, y+8, innerW-16, PH-16, 4);
         ctx.stroke();
       }
-
-      // Film holes (for film frame)
-      if (frame.borderStyle === 'film') {
-        drawFilmHoles(ctx, y, PH, W, frame.accent);
-      }
+      if (frame.borderStyle === 'film') drawFilmHoles(ctx, y, PH, W, frame.accent);
 
       loaded++;
       if (loaded === photos.length) {
-        // Brand footer
         ctx.fillStyle = frame.textColor;
         ctx.font = 'italic 22px Georgia, serif';
         ctx.textAlign = 'center';
         ctx.fillText('✦  LENSERA  ✦', W/2, H - 26);
-
-        // Date stamp
         ctx.font = '12px DM Sans, sans-serif';
         ctx.fillStyle = (frame.textColor || '#999') + '88';
         ctx.fillText(new Date().toLocaleDateString('id-ID', {day:'2-digit',month:'short',year:'numeric'}), W/2, H - 10);
-
-        const a = document.createElement('a');
-        a.download = 'lensera-' + Date.now() + '.jpg';
-        a.href = canvas.toDataURL('image/jpeg', 0.96);
-        a.click();
+        onDone(canvas);
       }
     };
     img.src = src;
+  });
+}
+
+function downloadStrip() {
+  stats.downloads++;
+  saveStats();
+  buildStripCanvas(canvas => {
+    if (!canvas) { alert('Tidak ada foto yang dipilih!'); return; }
+    const a = document.createElement('a');
+    a.download = 'lensera-' + Date.now() + '.jpg';
+    a.href = canvas.toDataURL('image/jpeg', 0.96);
+    a.click();
+  });
+}
+
+/* ────────────────────────────────────────
+   IMGBB UPLOAD
+   ──────────────────────────────────────── */
+
+// Upload canvas to ImgBB, returns public image URL via callback onSuccess(url) / onError()
+function uploadToImgBB(canvas, onSuccess, onError) {
+  if (!IMGBB_API_KEY) { onError('no_key'); return; }
+
+  // Compress to ~70% quality for faster upload (~150-300KB for a strip)
+  const base64 = canvas.toDataURL('image/jpeg', 0.70).split(',')[1];
+
+  const formData = new FormData();
+  formData.append('image', base64);
+
+  fetch('https://api.imgbb.com/1/upload?key=' + IMGBB_API_KEY, {
+    method: 'POST',
+    body: formData,
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success && data.data && data.data.url) {
+      onSuccess(data.data.url);
+    } else {
+      onError('api_error');
+    }
+  })
+  .catch(() => onError('network_error'));
+}
+
+// Called from renderPreview — build canvas, upload, update QR
+function uploadAndGenerateQR() {
+  const container  = document.getElementById('qrCanvas');
+  const labelEl    = document.getElementById('qrLabel');
+  if (!container) return;
+
+  // No API key set → fall back to homepage QR
+  if (!IMGBB_API_KEY) {
+    generateQR();
+    return;
+  }
+
+  // Show spinner while uploading
+  container.innerHTML = '<div class="qr-uploading"><div class="qr-spinner"></div><div class="qr-upload-text">Uploading…</div></div>';
+  if (labelEl) labelEl.textContent = 'Menyiapkan foto…';
+
+  buildStripCanvas(canvas => {
+    if (!canvas) { generateQR(); return; }
+
+    uploadToImgBB(canvas,
+      // Success — render QR with photo URL
+      (photoUrl) => {
+        state.uploadedPhotoUrl = photoUrl;
+        container.innerHTML = '';
+        _qrInstance = null;
+        try {
+          _qrInstance = new QRCode(container, {
+            text:         photoUrl,
+            width:        160,
+            height:       160,
+            colorDark:    '#1A1018',
+            colorLight:   '#ffffff',
+            correctLevel: QRCode.CorrectLevel.H,
+          });
+          if (labelEl) labelEl.textContent = 'Scan · Simpan Foto ke HP';
+        } catch(e) {
+          container.textContent = photoUrl;
+        }
+      },
+      // Error — fall back to homepage QR
+      () => {
+        generateQR();
+        if (labelEl) labelEl.textContent = 'Scan · Buka Foto Booth';
+      }
+    );
   });
 }
 
