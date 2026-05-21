@@ -1563,10 +1563,10 @@ html, body {
    ──────────────────────────────────────── */
 
 // ← Ganti URL ini setelah deploy ke Vercel
-const VERCEL_URL = 'https://lenserabooth.vercel.app';
+const VERCEL_URL = 'https://lensera-fotobooth.vercel.app';
 
 // ← Daftar gratis di https://api.imgbb.com lalu paste API key di sini
-const IMGBB_API_KEY = '2e0b4ce0f2bcf42efd4631b458713783';
+const IMGBB_API_KEY = '';
 
 const DEFAULT_PACKAGES = [
   { id:'basic',  name:'Basic',  price:'Rp10.000', priceNum:10000, photos:3,  frames:1,  time:180, featured:false, badge:null },
@@ -2223,13 +2223,18 @@ function uploadToImgBB(canvas, onSuccess, onError) {
   })
   .then(r => r.json())
   .then(data => {
-    if (data.success && data.data && data.data.url) {
-      onSuccess(data.data.url);
+    console.log('[ImgBB response]', JSON.stringify(data));
+    if (data.success && data.data) {
+      // display_url = direct image link (i.ibb.co), url = viewer page (ibb.co/xxx)
+      const photoUrl = data.data.display_url || data.data.url;
+      console.log('[ImgBB photo URL]', photoUrl);
+      onSuccess(photoUrl);
     } else {
+      console.error('[ImgBB error]', data);
       onError('api_error');
     }
   })
-  .catch(() => onError('network_error'));
+  .catch(err => { console.error('[ImgBB fetch error]', err); onError('network_error'); });
 }
 
 // Called from renderPreview — build canvas, upload, update QR
