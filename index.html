@@ -7,11 +7,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 /* ════════════════════════════════════════
-   LENSERA Foto Booth
-   Aesthetic Self Photobooth App
-   Style: Korea Minimal · Dark · Pink
+   LENSERA Foto Booth — v2.0
+   Phase 2: Filters · Music · Admin · QR · Real Frames
    ════════════════════════════════════════ */
 
 *, *::before, *::after {
@@ -34,6 +34,7 @@
   --white:       #FAFAFA;
   --cream:       #F7F0F2;
   --gold:        #C9A96E;
+  --green:       #5DDA7A;
 }
 
 html, body {
@@ -223,6 +224,20 @@ html, body {
   text-transform: uppercase;
   text-align: center;
 }
+/* Admin link (subtle) */
+.home-admin-link {
+  position: absolute;
+  bottom: 14px; right: 16px;
+  font-size: 9px;
+  color: rgba(255,255,255,0.1);
+  letter-spacing: 2px;
+  cursor: pointer;
+  padding: 4px 8px;
+  z-index: 10;
+  text-transform: uppercase;
+  transition: color 0.2s;
+}
+.home-admin-link:hover { color: rgba(255,255,255,0.3); }
 
 /* ════════════════════════════════════════
    PACKAGES SCREEN
@@ -335,6 +350,7 @@ html, body {
   width: 100%; height: 100%;
   object-fit: cover;
   display: none;
+  transition: filter 0.3s ease;
 }
 .cam-placeholder {
   display: flex;
@@ -500,6 +516,40 @@ html, body {
   stroke-width: 2;
   fill: none;
 }
+
+/* ── FILTER STRIP ── */
+.cam-filter-strip {
+  position: absolute;
+  bottom: 0;
+  left: 0; right: 0;
+  display: flex;
+  gap: 8px;
+  padding: 10px 16px 14px;
+  overflow-x: auto;
+  background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+  z-index: 12;
+  scrollbar-width: none;
+}
+.cam-filter-strip::-webkit-scrollbar { display: none; }
+.filter-chip {
+  flex-shrink: 0;
+  background: rgba(0,0,0,0.5);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: rgba(255,255,255,0.55);
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+}
+.filter-chip.active-filter {
+  background: rgba(212,137,154,0.2);
+  border-color: var(--pink-deep);
+  color: var(--pink);
+}
+.filter-chip:active { transform: scale(0.94); }
 
 /* ════════════════════════════════════════
    GALLERY SCREEN
@@ -740,6 +790,39 @@ html, body {
 }
 .btn-new-session:active { color: rgba(255,255,255,0.5); }
 
+/* QR Code area */
+.preview-qr-wrap {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  z-index: 1;
+  animation: fadeUp 0.5s 0.15s ease both;
+}
+.preview-qr-canvas {
+  border-radius: 10px;
+  background: white;
+  padding: 8px;
+  width: 108px; height: 108px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.preview-qr-canvas img,
+.preview-qr-canvas canvas {
+  width: 92px !important;
+  height: 92px !important;
+  display: block;
+}
+.preview-qr-label {
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: rgba(255,255,255,0.2);
+  text-transform: uppercase;
+}
+
 /* Confetti */
 .confetti {
   position: absolute;
@@ -749,21 +832,250 @@ html, body {
 }
 
 /* ════════════════════════════════════════
-   ANIMATIONS
+   MUSIC PLAYER (floating)
    ════════════════════════════════════════ */
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(18px); }
-  to   { opacity: 1; transform: translateY(0); }
+.music-btn {
+  position: absolute;
+  top: 16px; right: 16px;
+  width: 36px; height: 36px;
+  background: rgba(0,0,0,0.4);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  z-index: 200;
+  transition: all 0.2s;
 }
-@keyframes numPop {
-  0%   { transform: scale(1.5); opacity: 0; }
-  40%  { transform: scale(1);   opacity: 1; }
-  80%  { transform: scale(0.9); opacity: 1; }
-  100% { transform: scale(0.7); opacity: 0; }
+.music-btn:active { transform: scale(0.9); }
+.music-btn.playing {
+  border-color: rgba(212,137,154,0.4);
+  background: rgba(212,137,154,0.15);
+  animation: musicPulse 2s ease infinite;
 }
-@keyframes confettiFall {
-  0%   { transform: translateY(-20px) rotate(0deg);   opacity: 1; }
-  100% { transform: translateY(280px) rotate(400deg); opacity: 0; }
+
+@keyframes musicPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(212,137,154,0.3); }
+  50% { box-shadow: 0 0 0 8px rgba(212,137,154,0); }
+}
+
+/* ════════════════════════════════════════
+   ADMIN SCREEN
+   ════════════════════════════════════════ */
+#admin {
+  background: var(--dark);
+  overflow-y: auto;
+  justify-content: flex-start;
+  padding-top: 20px;
+  padding-bottom: 60px;
+}
+.admin-header {
+  width: 100%;
+  max-width: 500px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  z-index: 1;
+  padding: 0 4px;
+}
+.admin-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 24px;
+  color: var(--white);
+}
+.admin-close {
+  width: 36px; height: 36px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+  color: var(--silver);
+}
+.admin-section {
+  width: 100%;
+  max-width: 500px;
+  margin-bottom: 20px;
+  z-index: 1;
+}
+.admin-section-title {
+  font-size: 9px;
+  letter-spacing: 4px;
+  color: var(--pink-deep);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  padding-left: 4px;
+}
+.admin-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 16px;
+  padding: 16px 20px;
+  margin-bottom: 10px;
+}
+.admin-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.admin-row:last-child { border-bottom: none; }
+.admin-row-label {
+  font-size: 13px;
+  color: var(--silver);
+}
+.admin-row-val {
+  font-size: 13px;
+  color: var(--pink);
+}
+.admin-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.admin-stat-box {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 14px;
+  padding: 16px;
+  text-align: center;
+}
+.admin-stat-num {
+  font-family: 'Playfair Display', serif;
+  font-size: 32px;
+  color: var(--white);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.admin-stat-label {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: rgba(255,255,255,0.3);
+  text-transform: uppercase;
+}
+.admin-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.toggle-switch {
+  width: 44px; height: 24px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 12px;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+.toggle-switch.on { background: var(--pink-deep); }
+.toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 20px; height: 20px;
+  background: white;
+  border-radius: 50%;
+  transition: left 0.2s;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+.toggle-switch.on::after { left: 22px; }
+.admin-input {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  padding: 8px 14px;
+  color: var(--white);
+  font-size: 13px;
+  font-family: 'DM Sans', sans-serif;
+  width: 120px;
+  text-align: right;
+  outline: none;
+  -webkit-user-select: text;
+  user-select: text;
+}
+.admin-input:focus { border-color: rgba(212,137,154,0.4); }
+.admin-btn {
+  background: rgba(212,137,154,0.15);
+  border: 1px solid rgba(212,137,154,0.25);
+  color: var(--pink);
+  font-size: 11px;
+  letter-spacing: 2px;
+  padding: 10px 20px;
+  border-radius: 20px;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: background 0.2s;
+}
+.admin-btn:active { background: rgba(212,137,154,0.25); }
+.admin-btn.danger {
+  background: rgba(255,80,80,0.1);
+  border-color: rgba(255,80,80,0.2);
+  color: #FF8080;
+}
+.admin-pin-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 40px 20px;
+  width: 100%;
+}
+.admin-pin-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px;
+  color: var(--white);
+  text-align: center;
+}
+.admin-pin-dots {
+  display: flex;
+  gap: 12px;
+}
+.pin-dot {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.1);
+  border: 1.5px solid rgba(255,255,255,0.2);
+  transition: all 0.15s;
+}
+.pin-dot.filled {
+  background: var(--pink-deep);
+  border-color: var(--pink-deep);
+}
+.admin-keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  width: 260px;
+}
+.key-btn {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+  padding: 18px;
+  font-size: 20px;
+  color: var(--white);
+  cursor: pointer;
+  text-align: center;
+  font-family: 'Playfair Display', serif;
+  transition: background 0.15s;
+}
+.key-btn:active { background: rgba(255,255,255,0.12); }
+.key-btn.key-del { font-size: 14px; color: var(--silver); }
+.pin-error { font-size: 11px; color: #FF8080; letter-spacing: 2px; opacity: 0; transition: opacity 0.2s; }
+.pin-error.show { opacity: 1; }
+
+/* Revenue badge */
+.admin-revenue {
+  font-family: 'Playfair Display', serif;
+  font-size: 36px;
+  color: var(--gold);
+  text-align: center;
+  padding: 8px 0;
 }
 
 /* ════════════════════════════════════════
@@ -797,7 +1109,7 @@ html, body {
   color: #7EE89A;
 }
 .cam-mode-badge.dslr-mode .mode-dot {
-  background: #5DDA7A;
+  background: var(--green);
   box-shadow: 0 0 8px rgba(93,218,122,0.7);
   animation: pulseDot 1.8s ease infinite;
 }
@@ -822,14 +1134,12 @@ html, body {
   50%       { opacity: 0.4; transform: scale(0.7); }
 }
 
-/* Tombol Webcam jadi mode toggle */
 .cam-side-btn.active-mode {
   background: rgba(93,218,122,0.1);
   border-color: rgba(93,218,122,0.35);
   color: #7EE89A;
 }
 
-/* DSLR Live View — tampil gambar terakhir dari server */
 #dslrLiveView {
   width: 100%; height: 100%;
   object-fit: cover;
@@ -838,7 +1148,6 @@ html, body {
   inset: 0;
 }
 
-/* Toast notif kecil */
 .cam-toast {
   position: absolute;
   bottom: 0;
@@ -859,7 +1168,6 @@ html, body {
 }
 .cam-toast.show { opacity: 1; }
 
-/* Status server pada cam placeholder */
 .cam-server-status {
   margin-top: 8px;
   font-size: 10px;
@@ -870,6 +1178,24 @@ html, body {
 .cam-server-status.checking { color: rgba(255,200,100,0.5); }
 .cam-server-status.connected { color: rgba(93,218,122,0.6); }
 .cam-server-status.offline   { color: rgba(255,100,100,0.4); }
+
+/* ════════════════════════════════════════
+   ANIMATIONS
+   ════════════════════════════════════════ */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes numPop {
+  0%   { transform: scale(1.5); opacity: 0; }
+  40%  { transform: scale(1);   opacity: 1; }
+  80%  { transform: scale(0.9); opacity: 1; }
+  100% { transform: scale(0.7); opacity: 0; }
+}
+@keyframes confettiFall {
+  0%   { transform: translateY(-20px) rotate(0deg);   opacity: 1; }
+  100% { transform: translateY(280px) rotate(400deg); opacity: 0; }
+}
 
 /* ════════════════════════════════════════
    PRINT STYLES
@@ -895,6 +1221,9 @@ html, body {
   <div class="orb" style="width:320px;height:320px;background:rgba(212,137,154,0.13);top:-60px;right:-60px"></div>
   <div class="orb" style="width:200px;height:200px;background:rgba(201,169,110,0.07);bottom:80px;left:-40px"></div>
 
+  <!-- Music button -->
+  <div class="music-btn" id="musicBtn" onclick="toggleMusic()" title="Musik">🎵</div>
+
   <div class="home-logo-wrap">
     <span class="home-logo-icon">✦</span>
     <div class="home-logo-name">LENSERA</div>
@@ -907,6 +1236,7 @@ html, body {
   <button class="btn-start" onclick="goTo('packages')">TAP TO START</button>
 
   <p class="home-note">Bayar dulu · Lalu tap start</p>
+  <div class="home-admin-link" onclick="goTo('admin')">⚙ Admin</div>
 </div>
 
 
@@ -925,7 +1255,7 @@ html, body {
   <div class="screen-title">Choose Package</div>
   <div class="screen-sub">pilih paket fotomu</div>
   <div class="pkg-grid" id="pkgGrid">
-    <!-- Dirender oleh JS -->
+    <!-- JS rendered -->
   </div>
 </div>
 
@@ -935,10 +1265,7 @@ html, body {
      ══════════════════════════════════════ -->
 <div class="screen" id="camera" style="padding:0;justify-content:flex-start">
   <div class="cam-preview-area">
-    <!-- Webcam feed -->
     <video id="camVideo" autoplay playsinline muted></video>
-
-    <!-- DSLR live view (last captured image dari server) -->
     <img id="dslrLiveView" alt="DSLR Preview" src="">
 
     <div class="cam-placeholder" id="camPlaceholder">
@@ -954,33 +1281,30 @@ html, body {
       <p class="cam-server-status checking" id="serverStatusText">● Checking server…</p>
     </div>
 
-    <!-- Viewfinder corners -->
     <div class="cam-corner tl"></div>
     <div class="cam-corner tr"></div>
     <div class="cam-corner bl"></div>
     <div class="cam-corner br"></div>
 
-    <!-- Top info -->
     <div class="cam-top-info">
       <span class="cam-badge-pill" id="pkgInfoBadge">BASIC · 3 foto</span>
       <span class="cam-badge-pill timer" id="timerBadge">03:00</span>
     </div>
 
-    <!-- Mode badge (DSLR / Webcam) -->
     <div class="cam-mode-badge checking-mode" id="camModeBadge">
       <span class="mode-dot"></span>
       <span id="camModeLabel">Checking…</span>
     </div>
 
-    <!-- Flash overlay -->
+    <!-- Filter strip -->
+    <div class="cam-filter-strip" id="filterStrip"></div>
+
     <div class="cam-flash" id="camFlash"></div>
 
-    <!-- Countdown overlay -->
     <div class="cam-countdown" id="camCountdown">
       <div class="cam-countdown-num" id="camCountdownNum">3</div>
     </div>
 
-    <!-- Toast notifikasi -->
     <div class="cam-toast" id="camToast"></div>
   </div>
 
@@ -1067,15 +1391,137 @@ html, body {
     <div class="dot active"></div>
   </div>
   <div class="preview-strip-wrap">
-    <div class="preview-strip" id="previewStrip">
-      <!-- Dirender oleh JS -->
-    </div>
+    <div class="preview-strip" id="previewStrip"></div>
   </div>
   <div class="preview-actions">
     <button class="btn-download" onclick="downloadStrip()">⬇ DOWNLOAD</button>
     <button class="btn-print-strip" onclick="printStrip()">🖨 PRINT</button>
   </div>
+  <div class="preview-qr-wrap" id="qrWrap">
+    <div id="qrCanvas" class="preview-qr-canvas"></div>
+    <div class="preview-qr-label">Scan · Buka Foto Booth</div>
+  </div>
   <button class="btn-new-session" onclick="restartSession()">✦ Mulai Sesi Baru</button>
+</div>
+
+
+<!-- ══════════════════════════════════════
+     ADMIN SCREEN
+     ══════════════════════════════════════ -->
+<div class="screen overflow" id="admin">
+  <!-- PIN gate shown first, dashboard shown after auth -->
+  <div id="adminPinGate" class="admin-pin-screen">
+    <div class="admin-pin-title">Admin Panel</div>
+    <div style="font-size:11px;color:rgba(255,255,255,0.25);letter-spacing:3px;">MASUKKAN PIN</div>
+    <div class="admin-pin-dots" id="pinDots">
+      <div class="pin-dot" id="pd0"></div>
+      <div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div>
+      <div class="pin-dot" id="pd3"></div>
+    </div>
+    <div class="pin-error" id="pinError">PIN salah, coba lagi</div>
+    <div class="admin-keypad">
+      <div class="key-btn" onclick="pinKey('1')">1</div>
+      <div class="key-btn" onclick="pinKey('2')">2</div>
+      <div class="key-btn" onclick="pinKey('3')">3</div>
+      <div class="key-btn" onclick="pinKey('4')">4</div>
+      <div class="key-btn" onclick="pinKey('5')">5</div>
+      <div class="key-btn" onclick="pinKey('6')">6</div>
+      <div class="key-btn" onclick="pinKey('7')">7</div>
+      <div class="key-btn" onclick="pinKey('8')">8</div>
+      <div class="key-btn" onclick="pinKey('9')">9</div>
+      <div class="key-btn" onclick="pinKey('back')" style="font-size:12px;color:rgba(255,255,255,0.3)">←</div>
+      <div class="key-btn" onclick="pinKey('0')">0</div>
+      <div class="key-btn key-del" onclick="goTo('home')">✕</div>
+    </div>
+  </div>
+
+  <!-- Dashboard (hidden until PIN ok) -->
+  <div id="adminDashboard" style="display:none;width:100%;align-items:center;flex-direction:column">
+    <div class="admin-header" style="width:100%;max-width:500px">
+      <div class="admin-title">⚙ Admin</div>
+      <div class="admin-close" onclick="adminLogout()">✕</div>
+    </div>
+
+    <!-- Stats -->
+    <div class="admin-section">
+      <div class="admin-section-title">Statistik Hari Ini</div>
+      <div class="admin-stat-grid">
+        <div class="admin-stat-box">
+          <div class="admin-stat-num" id="statSessions">0</div>
+          <div class="admin-stat-label">Sesi</div>
+        </div>
+        <div class="admin-stat-box">
+          <div class="admin-stat-num" id="statPhotos">0</div>
+          <div class="admin-stat-label">Foto</div>
+        </div>
+        <div class="admin-stat-box">
+          <div class="admin-stat-num" id="statDownloads">0</div>
+          <div class="admin-stat-label">Download</div>
+        </div>
+        <div class="admin-stat-box">
+          <div class="admin-stat-num" id="statPrints">0</div>
+          <div class="admin-stat-label">Print</div>
+        </div>
+      </div>
+      <div class="admin-card" style="text-align:center">
+        <div style="font-size:10px;letter-spacing:3px;color:rgba(255,255,255,0.3);margin-bottom:6px">TOTAL PENDAPATAN</div>
+        <div class="admin-revenue" id="statRevenue">Rp0</div>
+      </div>
+    </div>
+
+    <!-- Paket settings -->
+    <div class="admin-section">
+      <div class="admin-section-title">Harga Paket</div>
+      <div class="admin-card" id="adminPkgList"></div>
+    </div>
+
+    <!-- Music -->
+    <div class="admin-section">
+      <div class="admin-section-title">Musik Latar</div>
+      <div class="admin-card">
+        <div class="admin-row">
+          <span class="admin-row-label">Aktifkan musik</span>
+          <div class="admin-toggle">
+            <div class="toggle-switch" id="musicToggle" onclick="adminToggleMusic()"></div>
+          </div>
+        </div>
+        <div class="admin-row">
+          <span class="admin-row-label">Volume</span>
+          <input type="range" id="musicVolume" min="0" max="100" value="40"
+            style="-webkit-user-select:auto;user-select:auto;"
+            oninput="setMusicVolume(this.value)">
+        </div>
+      </div>
+    </div>
+
+    <!-- Reset -->
+    <div class="admin-section">
+      <div class="admin-section-title">Kontrol</div>
+      <div class="admin-card" style="display:flex;gap:12px;flex-wrap:wrap">
+        <button class="admin-btn" onclick="adminResetStats()">Reset Statistik</button>
+        <button class="admin-btn danger" onclick="adminResetAll()">Reset Semua</button>
+      </div>
+    </div>
+
+    <!-- PIN change -->
+    <div class="admin-section">
+      <div class="admin-section-title">Ubah PIN Admin</div>
+      <div class="admin-card">
+        <div class="admin-row">
+          <span class="admin-row-label">PIN Baru (4 digit)</span>
+          <input class="admin-input" id="newPinInput" type="password" maxlength="4"
+            placeholder="••••" inputmode="numeric"
+            style="-webkit-user-select:auto;user-select:auto;">
+        </div>
+        <div style="text-align:right;margin-top:10px">
+          <button class="admin-btn" onclick="adminSavePin()">Simpan PIN</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="height:20px"></div>
+  </div>
 </div>
 
 
@@ -1085,65 +1531,69 @@ html, body {
 <script>
 
 /* ────────────────────────────────────────
-   DATA — Edit di sini untuk ubah paket & frame!
+   DATA
    ──────────────────────────────────────── */
 
-const PACKAGES = [
-  {
-    id: 'basic',
-    name: 'Basic',
-    price: 'Rp10.000',
-    photos: 3,
-    frames: 1,
-    time: 180,
-    featured: false,
-    badge: null,
-  },
-  {
-    id: 'bestie',
-    name: 'Bestie',
-    price: 'Rp20.000',
-    photos: 6,
-    frames: 3,
-    time: 300,
-    featured: true,
-    badge: '★ POPULAR',
-  },
-  {
-    id: 'party',
-    name: 'Party',
-    price: 'Rp35.000',
-    photos: 12,
-    frames: 99,
-    time: 480,
-    featured: false,
-    badge: null,
-  },
+const DEFAULT_PACKAGES = [
+  { id:'basic',  name:'Basic',  price:'Rp10.000', priceNum:10000, photos:3,  frames:1,  time:180, featured:false, badge:null },
+  { id:'bestie', name:'Bestie', price:'Rp20.000', priceNum:20000, photos:6,  frames:3,  time:300, featured:true,  badge:'★ POPULAR' },
+  { id:'party',  name:'Party',  price:'Rp35.000', priceNum:35000, photos:12, frames:99, time:480, featured:false, badge:null },
 ];
 
+// Load dari localStorage jika ada
+let PACKAGES = (() => {
+  try { return JSON.parse(localStorage.getItem('lensera_packages')) || DEFAULT_PACKAGES; }
+  catch { return DEFAULT_PACKAGES; }
+})();
+
 const FRAMES = [
-  { id: 'white',  name: 'White Clean',   bg: '#FFFFFF', accent: '#E0E0E0', textColor: '#888' },
-  { id: 'black',  name: 'Black Elegant', bg: '#111111', accent: '#2C2C2C', textColor: '#555' },
-  { id: 'pink',   name: 'Pink Soft',     bg: '#FBE9EE', accent: '#F2C4CE', textColor: '#B07080' },
-  { id: 'silver', name: 'Chrome Silver', bg: '#E8EAF0', accent: '#C8CDD6', textColor: '#7A7F90' },
-  { id: 'doodle', name: 'Doodle Cute',   bg: '#FFFDE7', accent: '#FFD54F', textColor: '#9C8B20' },
-  { id: 'film',   name: 'Vintage Film',  bg: '#F5E6C8', accent: '#C8A96E', textColor: '#8B6A30' },
+  { id:'white',  name:'White Clean',   bg:'#FFFFFF', accent:'#E0E0E0', textColor:'#888888', borderStyle:'thin' },
+  { id:'black',  name:'Black Elegant', bg:'#111111', accent:'#2C2C2C', textColor:'#555555', borderStyle:'thin' },
+  { id:'pink',   name:'Pink Soft',     bg:'#FBE9EE', accent:'#F2C4CE', textColor:'#B07080', borderStyle:'double' },
+  { id:'silver', name:'Chrome Silver', bg:'#E8EAF0', accent:'#C8CDD6', textColor:'#7A7F90', borderStyle:'thin' },
+  { id:'doodle', name:'Doodle Cute',   bg:'#FFFDE7', accent:'#FFD54F', textColor:'#9C8B20', borderStyle:'doodle' },
+  { id:'film',   name:'Vintage Film',  bg:'#F5E6C8', accent:'#C8A96E', textColor:'#8B6A30', borderStyle:'film' },
+];
+
+/* Aesthetic filters */
+const FILTERS = [
+  { id:'none',    name:'Original', css:'' },
+  { id:'vivid',   name:'Vivid',    css:'saturate(1.6) contrast(1.05)' },
+  { id:'soft',    name:'Soft',     css:'brightness(1.08) saturate(0.85) contrast(0.9)' },
+  { id:'bw',      name:'B&W',      css:'grayscale(1) contrast(1.1)' },
+  { id:'vintage', name:'Vintage',  css:'sepia(0.45) saturate(1.2) contrast(0.95) brightness(0.95)' },
+  { id:'cool',    name:'Cool',     css:'hue-rotate(15deg) saturate(1.2) brightness(1.04)' },
+  { id:'warm',    name:'Warm',     css:'sepia(0.2) saturate(1.3) hue-rotate(-10deg)' },
+  { id:'fade',    name:'Fade',     css:'opacity(0.85) brightness(1.12) saturate(0.75) contrast(0.85)' },
 ];
 
 /* ────────────────────────────────────────
-   STATE — data sesi berjalan
+   STATE
    ──────────────────────────────────────── */
 
 let state = {
-  pkg:             null,   // paket yang dipilih
-  capturedPhotos:  [],     // array base64 hasil foto
-  selectedPhotos:  [],     // index foto yang dipilih dari gallery
-  selectedFrame:   null,   // id frame yang dipilih
-  timerInterval:   null,
-  timeLeft:        180,
-  stream:          null,   // webcam stream
-  counting:        false,
+  pkg:            null,
+  capturedPhotos: [],
+  selectedPhotos: [],
+  selectedFrame:  null,
+  selectedFilter: 'none',
+  timerInterval:  null,
+  timeLeft:       180,
+  stream:         null,
+  counting:       false,
 };
+
+/* Stats (persisted in localStorage) */
+let stats = (() => {
+  try { return JSON.parse(localStorage.getItem('lensera_stats')) || {sessions:0,photos:0,downloads:0,prints:0,revenue:0}; }
+  catch { return {sessions:0,photos:0,downloads:0,prints:0,revenue:0}; }
+})();
+
+function saveStats() { localStorage.setItem('lensera_stats', JSON.stringify(stats)); }
+
+/* Admin PIN */
+let adminPin = localStorage.getItem('lensera_pin') || '1234';
+let pinBuffer = '';
 
 /* ────────────────────────────────────────
    NAVIGATION
@@ -1153,21 +1603,29 @@ function goTo(screenId) {
   const current = document.querySelector('.screen.active');
   if (current) {
     current.style.opacity = '0';
-    setTimeout(() => current.classList.remove('active'), 300);
+    setTimeout(() => {
+      current.classList.remove('active');
+      current.style.opacity = '';
+    }, 300);
   }
   setTimeout(() => {
     const next = document.getElementById(screenId);
+    if (!next) return;
+    next.style.opacity = '0';
     next.classList.add('active');
-    // Lifecycle hooks
+    // Force reflow so the opacity transition actually fires
+    void next.offsetWidth;
+    next.style.opacity = '1';
     if (screenId === 'camera')  initCameraScreen();
     if (screenId === 'gallery') renderGallery();
     if (screenId === 'frames')  renderFrames();
-    if (screenId === 'preview') renderPreview();
+    if (screenId === 'preview') { renderPreview(); generateQR(); }
+    if (screenId === 'admin')   initAdmin();
   }, 320);
 }
 
 /* ────────────────────────────────────────
-   PACKAGES — render kartu paket
+   PACKAGES
    ──────────────────────────────────────── */
 
 function renderPackages() {
@@ -1191,8 +1649,15 @@ function selectPackage(pkgId) {
   state.pkg = pkg;
   state.capturedPhotos = [];
   state.selectedPhotos = [];
-  state.selectedFrame = null;
+  state.selectedFrame  = null;
+  state.selectedFilter = 'none';
   state.timeLeft = pkg.time;
+
+  // Track stats
+  stats.sessions++;
+  stats.revenue += pkg.priceNum;
+  saveStats();
+
   goTo('camera');
 }
 
@@ -1204,19 +1669,15 @@ function formatTime(seconds) {
 
 /* ════════════════════════════════════════
    CAMERA BRIDGE SYSTEM
-   Mode: 'dslr' | 'webcam' | 'demo'
-   Server: http://localhost:3000
    ════════════════════════════════════════ */
 
-const SERVER_URL    = 'http://localhost:3000';
-const SERVER_TIMEOUT = 2000; // ms sebelum dianggap offline
+const SERVER_URL     = 'http://localhost:3000';
+const SERVER_TIMEOUT = 2000;
 
-// cameraMode: 'dslr' = pakai server Nikon, 'webcam' = browser cam, 'demo' = placeholder
-let cameraMode   = 'demo';
-let webcamActive = false;
+let cameraMode    = 'demo';
+let webcamActive  = false;
 let dslrConnected = false;
 
-/* ── Server check ── */
 async function checkDSLRServer() {
   setModeBadge('checking');
   try {
@@ -1226,9 +1687,7 @@ async function checkDSLRServer() {
     clearTimeout(tid);
     const data = await res.json();
     dslrConnected = data.ok === true;
-  } catch {
-    dslrConnected = false;
-  }
+  } catch { dslrConnected = false; }
 
   if (dslrConnected) {
     cameraMode = 'dslr';
@@ -1238,7 +1697,6 @@ async function checkDSLRServer() {
     document.getElementById('camModeBtn').textContent = '💻 Webcam';
     document.getElementById('camModeBtn').classList.remove('active-mode');
   } else {
-    // Server tidak ada → coba webcam otomatis
     cameraMode = 'demo';
     setModeBadge('webcam');
     updateServerStatus('offline', '● Server offline — mode webcam');
@@ -1247,26 +1705,18 @@ async function checkDSLRServer() {
   }
 }
 
-/* ── Badge & UI helpers ── */
 function setModeBadge(mode) {
   const badge = document.getElementById('camModeBadge');
   const label = document.getElementById('camModeLabel');
   badge.className = 'cam-mode-badge';
-  if (mode === 'dslr') {
-    badge.classList.add('dslr-mode');
-    label.textContent = 'DSLR Connected';
-  } else if (mode === 'webcam') {
-    badge.classList.add('webcam-mode');
-    label.textContent = webcamActive ? 'Webcam Active' : 'Webcam';
-  } else if (mode === 'checking') {
-    badge.classList.add('checking-mode');
-    label.textContent = 'Checking…';
-  }
+  if (mode === 'dslr') { badge.classList.add('dslr-mode'); label.textContent = 'DSLR Connected'; }
+  else if (mode === 'webcam') { badge.classList.add('webcam-mode'); label.textContent = webcamActive ? 'Webcam Active' : 'Webcam'; }
+  else if (mode === 'checking') { badge.classList.add('checking-mode'); label.textContent = 'Checking…'; }
 }
 
-function updateServerStatus(state, text) {
+function updateServerStatus(st, text) {
   const el = document.getElementById('serverStatusText');
-  el.className = 'cam-server-status ' + state;
+  el.className = 'cam-server-status ' + st;
   el.textContent = text;
 }
 
@@ -1280,37 +1730,28 @@ function showToast(msg, duration = 2400) {
 }
 
 function showDSLRView() {
-  document.getElementById('camVideo').style.display     = 'none';
-  document.getElementById('dslrLiveView').style.display = 'none'; // no live view on Windows/digiCam
+  document.getElementById('camVideo').style.display = 'none';
+  document.getElementById('dslrLiveView').style.display = 'none';
   document.getElementById('camPlaceholder').style.display = 'flex';
   updateServerStatus('connected', '● Nikon terhubung — siap foto');
-  document.getElementById('placeholderSub').textContent  = 'Kamera Nikon siap · Tekan tombol capture';
+  document.getElementById('placeholderSub').textContent = 'Kamera Nikon siap · Tekan tombol capture';
 }
 
-/* ── Mode Toggle button ── */
 function toggleCameraMode() {
-  if (dslrConnected && cameraMode === 'dslr') {
-    // Switch → webcam
-    startWebcam();
-  } else if (webcamActive) {
-    // Matikan webcam
-    stopWebcam();
-    // Coba reconnect ke server
-    checkDSLRServer();
-  } else {
-    // Nyalakan webcam
-    startWebcam();
-  }
+  if (dslrConnected && cameraMode === 'dslr') { startWebcam(); }
+  else if (webcamActive) { stopWebcam(); checkDSLRServer(); }
+  else { startWebcam(); }
 }
 
 function startWebcam() {
-  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 1280, height: 960 }, audio: false })
+  navigator.mediaDevices.getUserMedia({ video: { facingMode:'user', width:1280, height:960 }, audio:false })
     .then(stream => {
       state.stream = stream;
       const v = document.getElementById('camVideo');
       v.srcObject = stream;
       v.style.display = 'block';
-      document.getElementById('dslrLiveView').style.display = 'none';
+      applyFilterToVideo(state.selectedFilter);
+      document.getElementById('dslrLiveView').style.display  = 'none';
       document.getElementById('camPlaceholder').style.display = 'none';
       document.getElementById('camModeBtn').textContent = '✕ Stop Cam';
       document.getElementById('camModeBtn').classList.add('active-mode');
@@ -1319,17 +1760,11 @@ function startWebcam() {
       setModeBadge('webcam');
       showToast('💻 Webcam aktif');
     })
-    .catch(err => {
-      showToast('⚠ Webcam tidak bisa diakses');
-      cameraMode = 'demo';
-    });
+    .catch(() => { showToast('⚠ Webcam tidak bisa diakses'); cameraMode = 'demo'; });
 }
 
 function stopWebcam() {
-  if (state.stream) {
-    state.stream.getTracks().forEach(t => t.stop());
-    state.stream = null;
-  }
+  if (state.stream) { state.stream.getTracks().forEach(t => t.stop()); state.stream = null; }
   document.getElementById('camVideo').style.display = 'none';
   document.getElementById('camPlaceholder').style.display = 'flex';
   document.getElementById('camModeBtn').textContent = '📷 Webcam';
@@ -1339,7 +1774,7 @@ function stopWebcam() {
 }
 
 /* ────────────────────────────────────────
-   CAMERA SCREEN — init
+   CAMERA SCREEN INIT
    ──────────────────────────────────────── */
 
 function initCameraScreen() {
@@ -1350,8 +1785,7 @@ function initCameraScreen() {
   updateTimerBadge();
   updateDoneBtn();
   startTimer();
-
-  // Cek server setiap kali masuk halaman kamera
+  renderFilterStrip();
   checkDSLRServer();
 }
 
@@ -1362,22 +1796,46 @@ function startTimer() {
     updateTimerBadge();
     if (state.timeLeft === 0) {
       clearInterval(state.timerInterval);
-      if (state.capturedPhotos.length > 0) {
-        setTimeout(() => goTo('gallery'), 1000);
-      }
+      if (state.capturedPhotos.length > 0) setTimeout(() => goTo('gallery'), 1000);
     }
   }, 1000);
 }
 
 function updateTimerBadge() {
   const t = state.timeLeft;
-  const m = String(Math.floor(t / 60)).padStart(2, '0');
-  const s = String(t % 60).padStart(2, '0');
+  const m = String(Math.floor(t/60)).padStart(2,'0');
+  const s = String(t%60).padStart(2,'0');
   document.getElementById('timerBadge').textContent = m + ':' + s;
 }
 
 /* ────────────────────────────────────────
-   CAPTURE — dispatch ke mode aktif
+   FILTERS
+   ──────────────────────────────────────── */
+
+function renderFilterStrip() {
+  const strip = document.getElementById('filterStrip');
+  strip.innerHTML = FILTERS.map(f => `
+    <div class="filter-chip ${state.selectedFilter === f.id ? 'active-filter' : ''}"
+         onclick="selectFilter('${f.id}')">${f.name}</div>
+  `).join('');
+}
+
+function selectFilter(filterId) {
+  state.selectedFilter = filterId;
+  renderFilterStrip();
+  applyFilterToVideo(filterId);
+}
+
+function applyFilterToVideo(filterId) {
+  const f = FILTERS.find(x => x.id === filterId) || FILTERS[0];
+  const v = document.getElementById('camVideo');
+  v.style.filter = f.css;
+  const lv = document.getElementById('dslrLiveView');
+  lv.style.filter = f.css;
+}
+
+/* ────────────────────────────────────────
+   CAPTURE
    ──────────────────────────────────────── */
 
 function triggerCapture() {
@@ -1408,80 +1866,73 @@ function triggerCapture() {
 }
 
 async function captureNow() {
-  // Flash effect
   const flash = document.getElementById('camFlash');
   flash.style.transition = 'none';
   flash.style.opacity = '0.92';
-  setTimeout(() => {
-    flash.style.transition = 'opacity 0.35s ease';
-    flash.style.opacity = '0';
-  }, 60);
+  setTimeout(() => { flash.style.transition = 'opacity 0.35s ease'; flash.style.opacity = '0'; }, 60);
 
   let dataUrl = null;
 
-  /* ── Mode: DSLR via local server ── */
   if (cameraMode === 'dslr') {
     showToast('📸 Mengambil foto dari Nikon…');
     try {
-      // 1. Trigger shutter
-      const trigRes = await fetch(SERVER_URL + '/trigger', { method: 'POST' });
+      const trigRes  = await fetch(SERVER_URL + '/trigger', { method:'POST' });
       const trigData = await trigRes.json();
       if (!trigData.ok) throw new Error('Trigger gagal');
-
-      // 2. Poll sampai foto tersedia (max 8 detik)
-      const photoId = trigData.photoId || null;
-      dataUrl = await pollForPhoto(photoId, 8000);
-
-      // 3. Tampilkan di DSLR live view
+      dataUrl = await pollForPhoto(trigData.photoId || null, 8000);
       if (dataUrl) {
         const lv = document.getElementById('dslrLiveView');
         lv.src = dataUrl;
+        lv.style.filter = FILTERS.find(f=>f.id===state.selectedFilter)?.css || '';
         lv.style.display = 'block';
         document.getElementById('camPlaceholder').style.display = 'none';
       }
       showToast('✓ Foto tersimpan');
-    } catch (err) {
+    } catch {
       showToast('⚠ DSLR error — pakai demo photo');
       dataUrl = makePlaceholderPhoto(state.capturedPhotos.length + 1, true);
     }
-  }
-
-  /* ── Mode: Webcam ── */
-  else if (cameraMode === 'webcam') {
+  } else if (cameraMode === 'webcam') {
     const video = document.getElementById('camVideo');
     if (video.videoWidth > 0) {
       const canvas = document.createElement('canvas');
       canvas.width  = video.videoWidth;
       canvas.height = video.videoHeight;
-      canvas.getContext('2d').drawImage(video, 0, 0);
-      dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+      const ctx = canvas.getContext('2d');
+      const cssFilter = video.style.filter || '';
+
+      // Try ctx.filter (Chrome 76+, Firefox 110+, Safari 16.4+)
+      // If unsupported the property is silently ignored, so we detect support first
+      if (cssFilter && !isCtxFilterSupported()) {
+        // Fallback: render video to offscreen, apply CSS filter via SVG feColorMatrix
+        dataUrl = applyFilterViaOffscreen(video, canvas.width, canvas.height, cssFilter);
+      } else {
+        if (cssFilter) ctx.filter = cssFilter;
+        ctx.drawImage(video, 0, 0);
+        dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+      }
     }
   }
 
-  /* ── Mode: Demo (placeholder) ── */
-  if (!dataUrl) {
-    dataUrl = makePlaceholderPhoto(state.capturedPhotos.length + 1, false);
-  }
+  if (!dataUrl) dataUrl = makePlaceholderPhoto(state.capturedPhotos.length + 1, false);
 
   state.capturedPhotos.push(dataUrl);
+  stats.photos++;
+  saveStats();
   document.getElementById('capturedNum').textContent = state.capturedPhotos.length;
   updateDoneBtn();
   state.counting = false;
 }
 
-/* Poll server sampai file tersedia */
 async function pollForPhoto(photoId, timeoutMs) {
-  const start  = Date.now();
-  const url    = photoId
-    ? SERVER_URL + '/photo/' + photoId
-    : SERVER_URL + '/latest-photo';
-
+  const start = Date.now();
+  const url   = photoId ? SERVER_URL+'/photo/'+photoId : SERVER_URL+'/latest-photo';
   while (Date.now() - start < timeoutMs) {
     try {
       const res  = await fetch(url);
       const data = await res.json();
       if (data.ok && data.dataUrl) return data.dataUrl;
-    } catch { /* polling, skip error */ }
+    } catch {}
     await new Promise(r => setTimeout(r, 500));
   }
   throw new Error('Timeout polling foto');
@@ -1489,62 +1940,39 @@ async function pollForPhoto(photoId, timeoutMs) {
 
 function makePlaceholderPhoto(n, isDSLRFallback = false) {
   const canvas = document.createElement('canvas');
-  canvas.width  = 600;
-  canvas.height = 800;
+  canvas.width = 600; canvas.height = 800;
   const ctx = canvas.getContext('2d');
-
-  // Background gradient
   const grad = ctx.createLinearGradient(0, 0, 600, 800);
-  const palettes = [
-    ['#3D1F2E', '#1A1018'],
-    ['#261923', '#0D0A0B'],
-    ['#2A1620', '#111018'],
-  ];
+  const palettes = [['#3D1F2E','#1A1018'],['#261923','#0D0A0B'],['#2A1620','#111018']];
   const [c1, c2] = palettes[n % 3];
-  grad.addColorStop(0, c1);
-  grad.addColorStop(1, c2);
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, 600, 800);
-
-  // Soft circle
+  grad.addColorStop(0, c1); grad.addColorStop(1, c2);
+  ctx.fillStyle = grad; ctx.fillRect(0, 0, 600, 800);
   const grd = ctx.createRadialGradient(300, 350, 10, 300, 350, 200);
-  grd.addColorStop(0, 'rgba(212,137,154,0.2)');
-  grd.addColorStop(1, 'rgba(212,137,154,0)');
-  ctx.fillStyle = grd;
-  ctx.fillRect(0, 0, 600, 800);
-
-  // Text
-  ctx.fillStyle = 'rgba(255,255,255,0.4)';
-  ctx.font = '80px serif';
-  ctx.textAlign = 'center';
+  grd.addColorStop(0, 'rgba(212,137,154,0.2)'); grd.addColorStop(1, 'rgba(212,137,154,0)');
+  ctx.fillStyle = grd; ctx.fillRect(0, 0, 600, 800);
+  ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.font = '80px serif'; ctx.textAlign = 'center';
   ctx.fillText(isDSLRFallback ? '⚠️' : '📷', 300, 380);
-
-  ctx.fillStyle = 'rgba(255,255,255,0.25)';
-  ctx.font = '500 24px DM Sans, sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.font = '500 24px DM Sans, sans-serif';
   ctx.fillText('Foto #' + n, 300, 440);
-
-  ctx.fillStyle = 'rgba(212,137,154,0.4)';
-  ctx.font = '14px DM Sans, sans-serif';
+  ctx.fillStyle = 'rgba(212,137,154,0.4)'; ctx.font = '14px DM Sans, sans-serif';
   ctx.fillText(isDSLRFallback ? 'LENSERA · DSLR Error — Demo' : 'LENSERA · Demo Mode', 300, 480);
-
   return canvas.toDataURL('image/jpeg', 0.9);
 }
 
 function updateDoneBtn() {
   const btn = document.getElementById('camDoneBtn');
-  const hasPhoto = state.capturedPhotos.length > 0;
-  btn.style.opacity       = hasPhoto ? '1' : '0.3';
-  btn.style.pointerEvents = hasPhoto ? 'auto' : 'none';
+  const has = state.capturedPhotos.length > 0;
+  btn.style.opacity      = has ? '1' : '0.3';
+  btn.style.pointerEvents = has ? 'auto' : 'none';
 }
 
 /* ────────────────────────────────────────
-   GALLERY — pilih foto
+   GALLERY
    ──────────────────────────────────────── */
 
 function renderGallery() {
   const max = state.pkg.photos;
   document.getElementById('gallerySub').textContent = 'pilih ' + max + ' foto terbaikmu';
-
   const grid = document.getElementById('galleryGrid');
   grid.innerHTML = state.capturedPhotos.map((src, i) => `
     <div class="gallery-item ${state.selectedPhotos.includes(i) ? 'selected' : ''}"
@@ -1556,7 +1984,6 @@ function renderGallery() {
       </div>
     </div>
   `).join('');
-
   updateGalleryFooter();
 }
 
@@ -1564,9 +1991,8 @@ function toggleGalleryPhoto(idx, el, max) {
   const pos = state.selectedPhotos.indexOf(idx);
   if (pos === -1) {
     if (state.selectedPhotos.length >= max) {
-      // Shake visual feedback - sudah penuh
       el.style.transform = 'scale(0.92)';
-      setTimeout(() => { el.style.transform = ''; }, 200);
+      setTimeout(() => el.style.transform = '', 200);
       return;
     }
     state.selectedPhotos.push(idx);
@@ -1581,21 +2007,18 @@ function toggleGalleryPhoto(idx, el, max) {
 function updateGalleryFooter() {
   const n = state.selectedPhotos.length;
   document.getElementById('galSelCount').textContent = n + ' dipilih';
-  const btn = document.getElementById('btnGalNext');
-  btn.classList.toggle('ready', n > 0);
+  document.getElementById('btnGalNext').classList.toggle('ready', n > 0);
 }
 
 /* ────────────────────────────────────────
-   FRAMES — pilih bingkai
+   FRAMES
    ──────────────────────────────────────── */
 
 function renderFrames() {
   const maxFrames = state.pkg ? state.pkg.frames : 99;
   const available = maxFrames >= 99 ? FRAMES : FRAMES.slice(0, maxFrames);
-
   document.getElementById('frameSub').textContent =
     maxFrames >= 99 ? 'semua frame tersedia' : maxFrames + ' frame tersedia';
-
   const grid = document.getElementById('frameGrid');
   grid.innerHTML = available.map(f => `
     <div class="frame-card ${state.selectedFrame === f.id ? 'selected-frame' : ''}"
@@ -1617,18 +2040,17 @@ function selectFrame(frameId) {
 }
 
 /* ────────────────────────────────────────
-   PREVIEW — hasil akhir
+   PREVIEW — with real canvas frame
    ──────────────────────────────────────── */
 
 function renderPreview() {
   const frame = FRAMES.find(f => f.id === state.selectedFrame) || FRAMES[0];
-  const photos = state.selectedPhotos.length > 0
+  const photos = (state.selectedPhotos.length > 0
     ? state.selectedPhotos.slice(0, 4).map(i => state.capturedPhotos[i])
-    : state.capturedPhotos.slice(0, 4);
+    : state.capturedPhotos.slice(0, 4));
 
   const strip = document.getElementById('previewStrip');
   strip.style.background = frame.bg;
-
   strip.innerHTML =
     photos.map(src => `
       <div class="preview-strip-photo" style="border:4px solid ${frame.accent}">
@@ -1637,30 +2059,21 @@ function renderPreview() {
     `).join('') +
     `<div class="preview-strip-brand" style="color:${frame.textColor}">✦ LENSERA ✦</div>`;
 
-  // Tebar confetti!
   spawnConfetti();
 }
 
 function spawnConfetti() {
-  const colors = ['#F2C4CE', '#D4899A', '#C9A96E', '#C8CDD6', '#E8A0AD', '#FFFFFF'];
+  const colors = ['#F2C4CE','#D4899A','#C9A96E','#C8CDD6','#E8A0AD','#FFFFFF'];
   for (let i = 0; i < 24; i++) {
     setTimeout(() => {
       const el = document.createElement('div');
       el.className = 'confetti';
       const size = 6 + Math.random() * 8;
-      el.style.cssText = `
-        left: ${Math.random() * 100}%;
-        top: 0;
-        width: ${size}px;
-        height: ${size}px;
-        background: ${colors[Math.floor(Math.random() * colors.length)]};
-        border-radius: ${Math.random() > 0.5 ? '50%' : '2px'};
-        animation-duration: ${1.2 + Math.random() * 1.2}s;
-        animation-delay: ${Math.random() * 0.6}s;
-        position: absolute;
-        pointer-events: none;
-        z-index: 50;
-      `;
+      el.style.cssText = `left:${Math.random()*100}%;top:0;width:${size}px;height:${size}px;` +
+        `background:${colors[Math.floor(Math.random()*colors.length)]};` +
+        `border-radius:${Math.random()>0.5?'50%':'2px'};` +
+        `animation-duration:${1.2+Math.random()*1.2}s;animation-delay:${Math.random()*0.6}s;` +
+        `position:absolute;pointer-events:none;z-index:50;`;
       document.getElementById('preview').appendChild(el);
       setTimeout(() => el.remove(), 3000);
     }, i * 50);
@@ -1668,77 +2081,94 @@ function spawnConfetti() {
 }
 
 /* ────────────────────────────────────────
-   DOWNLOAD & PRINT
+   DOWNLOAD — Real canvas frame rendering
    ──────────────────────────────────────── */
 
 function downloadStrip() {
+  stats.downloads++;
+  saveStats();
+
   const frame  = FRAMES.find(f => f.id === state.selectedFrame) || FRAMES[0];
   const photos = state.selectedPhotos.length > 0
     ? state.selectedPhotos.slice(0, 4).map(i => state.capturedPhotos[i])
     : state.capturedPhotos.slice(0, 4);
 
-  if (photos.length === 0) {
-    alert('Tidak ada foto yang dipilih!');
-    return;
-  }
+  if (photos.length === 0) { alert('Tidak ada foto yang dipilih!'); return; }
 
-  const W = 640;
-  const PH = 800;     // tinggi tiap foto
-  const PAD = 20;
-  const BRAND = 60;
-  const H = PAD + photos.length * (PH + PAD) + BRAND;
+  const W      = 640;
+  const PH     = 480;   // photo height (4:3 landscape style strip)
+  const PAD    = 22;
+  const BRAND  = 70;
+  const H      = PAD + photos.length * (PH + PAD) + BRAND;
 
   const canvas = document.createElement('canvas');
-  canvas.width  = W;
-  canvas.height = H;
+  canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext('2d');
 
   // Background
   ctx.fillStyle = frame.bg;
   ctx.fillRect(0, 0, W, H);
 
+  // Frame decorations based on borderStyle
+  drawFrameDecoration(ctx, frame, W, H, PAD, photos.length, PH);
+
+  // Load and draw photos
   let loaded = 0;
   photos.forEach((src, i) => {
     const img = new Image();
     img.onload = () => {
       const y = PAD + i * (PH + PAD);
-      ctx.save();
-      // Border
-      ctx.strokeStyle = frame.accent;
-      ctx.lineWidth = 8;
       const innerW = W - PAD * 2;
+      ctx.save();
+
+      // Rounded clip
       ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(PAD, y, innerW, PH, 6);
-      else ctx.rect(PAD, y, innerW, PH);
-      ctx.stroke();
-      // Clip photo
-      ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(PAD, y, innerW, PH, 6);
-      else ctx.rect(PAD, y, innerW, PH);
+      ctx.roundRect(PAD, y, innerW, PH, 8);
       ctx.clip();
+
       // Draw photo (cover fit)
       const iAR = img.width / img.height;
       const bAR = innerW / PH;
       let dw, dh, dx, dy;
-      if (iAR > bAR) {
-        dh = PH; dw = PH * iAR;
-        dx = PAD - (dw - innerW) / 2; dy = y;
-      } else {
-        dw = innerW; dh = innerW / iAR;
-        dx = PAD; dy = y - (dh - PH) / 2;
-      }
+      if (iAR > bAR) { dh = PH; dw = PH * iAR; dx = PAD - (dw - innerW)/2; dy = y; }
+      else { dw = innerW; dh = innerW / iAR; dx = PAD; dy = y - (dh - PH)/2; }
       ctx.drawImage(img, dx, dy, dw, dh);
       ctx.restore();
 
+      // Border
+      ctx.strokeStyle = frame.accent;
+      ctx.lineWidth = frame.borderStyle === 'double' ? 6 : 4;
+      ctx.beginPath();
+      ctx.roundRect(PAD, y, innerW, PH, 8);
+      ctx.stroke();
+
+      // Double border
+      if (frame.borderStyle === 'double') {
+        ctx.strokeStyle = frame.accent + '66';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.roundRect(PAD+8, y+8, innerW-16, PH-16, 4);
+        ctx.stroke();
+      }
+
+      // Film holes (for film frame)
+      if (frame.borderStyle === 'film') {
+        drawFilmHoles(ctx, y, PH, W, frame.accent);
+      }
+
       loaded++;
       if (loaded === photos.length) {
-        // Brand text
-        ctx.fillStyle = frame.textColor || '#999';
+        // Brand footer
+        ctx.fillStyle = frame.textColor;
         ctx.font = 'italic 22px Georgia, serif';
         ctx.textAlign = 'center';
-        ctx.fillText('✦  LENSERA  ✦', W / 2, H - 20);
+        ctx.fillText('✦  LENSERA  ✦', W/2, H - 26);
 
-        // Download
+        // Date stamp
+        ctx.font = '12px DM Sans, sans-serif';
+        ctx.fillStyle = (frame.textColor || '#999') + '88';
+        ctx.fillText(new Date().toLocaleDateString('id-ID', {day:'2-digit',month:'short',year:'numeric'}), W/2, H - 10);
+
         const a = document.createElement('a');
         a.download = 'lensera-' + Date.now() + '.jpg';
         a.href = canvas.toDataURL('image/jpeg', 0.96);
@@ -1749,8 +2179,464 @@ function downloadStrip() {
   });
 }
 
+function drawFrameDecoration(ctx, frame, W, H, PAD, count, PH) {
+  if (frame.borderStyle === 'film') {
+    // Film strip sides
+    ctx.fillStyle = frame.accent + '40';
+    ctx.fillRect(0, 0, PAD - 4, H);
+    ctx.fillRect(W - PAD + 4, 0, PAD - 4, H);
+  }
+  if (frame.borderStyle === 'doodle') {
+    // Doodle corners
+    ctx.strokeStyle = frame.accent;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 6]);
+    ctx.strokeRect(8, 8, W - 16, H - 16);
+    ctx.setLineDash([]);
+    // Little stars
+    const stars = ['★','✦','♡','✿'];
+    ctx.font = '14px serif';
+    ctx.fillStyle = frame.accent;
+    ctx.textAlign = 'center';
+    for (let i = 0; i < 8; i++) {
+      const x = 14 + Math.random() * (W - 28);
+      const y = 14 + (i * (H/8));
+      ctx.fillText(stars[i % stars.length], x < 30 || x > W-30 ? x : (i % 2 === 0 ? 14 : W - 14), y);
+    }
+  }
+}
+
+function drawFilmHoles(ctx, y, PH, W, accent) {
+  ctx.fillStyle = accent + '90';
+  const holeH = 10, holeW = 6, gap = 18;
+  for (let hy = y + 10; hy < y + PH - 10; hy += gap) {
+    ctx.beginPath(); ctx.roundRect(4, hy, holeW, holeH, 2); ctx.fill();
+    ctx.beginPath(); ctx.roundRect(W - 10, hy, holeW, holeH, 2); ctx.fill();
+  }
+}
+
 function printStrip() {
+  stats.prints++;
+  saveStats();
   window.print();
+}
+
+/* ────────────────────────────────────────
+   QR CODE (lightweight inline generator)
+   Encodes download URL or a placeholder
+   ──────────────────────────────────────── */
+
+/* ────────────────────────────────────────
+   QR CODE — real, scannable via qrcode.js
+   ──────────────────────────────────────── */
+
+let _qrInstance = null;
+
+function generateQR() {
+  const container = document.getElementById('qrCanvas');
+  if (!container) return;
+
+  // URL to encode: the deployed Vercel URL (or current origin)
+  const url = window.location.origin + window.location.pathname;
+
+  // Clear previous QR
+  container.innerHTML = '';
+  _qrInstance = null;
+
+  if (typeof QRCode === 'undefined') {
+    // qrcode.js not loaded yet — show plain URL text fallback
+    container.style.fontSize = '8px';
+    container.style.wordBreak = 'break-all';
+    container.style.color = '#333';
+    container.style.padding = '10px';
+    container.textContent = url;
+    return;
+  }
+
+  try {
+    _qrInstance = new QRCode(container, {
+      text:           url,
+      width:          92,
+      height:         92,
+      colorDark:      '#1A1018',
+      colorLight:     '#ffffff',
+      correctLevel:   QRCode.CorrectLevel.M,
+    });
+  } catch (e) {
+    container.textContent = url;
+  }
+}
+
+/* ────────────────────────────────────────
+   POLYFILLS & COMPAT HELPERS
+   ──────────────────────────────────────── */
+
+// Detect ctx.filter support (set a value and read it back)
+let _ctxFilterSupported = null;
+function isCtxFilterSupported() {
+  if (_ctxFilterSupported !== null) return _ctxFilterSupported;
+  const c = document.createElement('canvas');
+  const x = c.getContext('2d');
+  x.filter = 'grayscale(1)';
+  _ctxFilterSupported = x.filter === 'grayscale(1)';
+  return _ctxFilterSupported;
+}
+
+// Fallback: draw video to offscreen img element styled with CSS filter,
+// then snapshot via another canvas. Works because the browser composites
+// the CSS filter when the element is painted into the canvas via drawImage
+// (supported in all browsers that support CSS filters).
+function applyFilterViaOffscreen(video, w, h, cssFilter) {
+  // Draw raw frame first
+  const raw = document.createElement('canvas');
+  raw.width = w; raw.height = h;
+  raw.getContext('2d').drawImage(video, 0, 0);
+
+  // Parse the CSS filter string into individual operations and apply manually
+  const ops = parseCSSFilter(cssFilter);
+  return applyFilterOps(raw, ops);
+}
+
+// Parse CSS filter string into array of {fn, val}
+function parseCSSFilter(str) {
+  const ops = [];
+  const re = /(\w+)\(([^)]+)\)/g;
+  let m;
+  while ((m = re.exec(str)) !== null) {
+    ops.push({ fn: m[1], val: parseFloat(m[2]) });
+  }
+  return ops;
+}
+
+// Apply filter ops via pixel manipulation (ImageData)
+function applyFilterOps(srcCanvas, ops) {
+  const w = srcCanvas.width, h = srcCanvas.height;
+  const out = document.createElement('canvas');
+  out.width = w; out.height = h;
+  const ctx = out.getContext('2d');
+  ctx.drawImage(srcCanvas, 0, 0);
+
+  if (ops.length === 0) return out.toDataURL('image/jpeg', 0.92);
+
+  const id = ctx.getImageData(0, 0, w, h);
+  const d  = id.data;
+
+  for (let i = 0; i < d.length; i += 4) {
+    let r = d[i], g = d[i+1], b = d[i+2];
+
+    for (const { fn, val } of ops) {
+      switch (fn) {
+        case 'grayscale': {
+          const lum = 0.299*r + 0.587*g + 0.114*b;
+          r = r + (lum - r) * val;
+          g = g + (lum - g) * val;
+          b = b + (lum - b) * val;
+          break;
+        }
+        case 'sepia': {
+          const nr = Math.min(255, r*0.393 + g*0.769 + b*0.189);
+          const ng = Math.min(255, r*0.349 + g*0.686 + b*0.168);
+          const nb = Math.min(255, r*0.272 + g*0.534 + b*0.131);
+          r = r + (nr - r) * val;
+          g = g + (ng - g) * val;
+          b = b + (nb - b) * val;
+          break;
+        }
+        case 'saturate': {
+          const lum2 = 0.299*r + 0.587*g + 0.114*b;
+          r = Math.max(0, Math.min(255, lum2 + (r - lum2) * val));
+          g = Math.max(0, Math.min(255, lum2 + (g - lum2) * val));
+          b = Math.max(0, Math.min(255, lum2 + (b - lum2) * val));
+          break;
+        }
+        case 'brightness': {
+          r = Math.max(0, Math.min(255, r * val));
+          g = Math.max(0, Math.min(255, g * val));
+          b = Math.max(0, Math.min(255, b * val));
+          break;
+        }
+        case 'contrast': {
+          // val is a CSS multiplier: 1.0 = no change, 1.2 = more contrast
+          // Standard contrast formula: output = factor * (input - 128) + 128
+          // where factor = val (CSS contrast is already a linear multiplier)
+          r = Math.max(0, Math.min(255, val * (r - 128) + 128));
+          g = Math.max(0, Math.min(255, val * (g - 128) + 128));
+          b = Math.max(0, Math.min(255, val * (b - 128) + 128));
+          break;
+        }
+        case 'hue-rotate': {
+          // Rotate hue by val degrees
+          const deg = val * Math.PI / 180;
+          const cos = Math.cos(deg), sin = Math.sin(deg);
+          const nr2 = r*(0.213+cos*0.787-sin*0.213) + g*(0.715-cos*0.715-sin*0.715) + b*(0.072-cos*0.072+sin*0.928);
+          const ng2 = r*(0.213-cos*0.213+sin*0.143) + g*(0.715+cos*0.285+sin*0.140) + b*(0.072-cos*0.072-sin*0.283);
+          const nb2 = r*(0.213-cos*0.213-sin*0.787) + g*(0.715-cos*0.715+sin*0.715) + b*(0.072+cos*0.928+sin*0.072);
+          r = Math.max(0, Math.min(255, nr2));
+          g = Math.max(0, Math.min(255, ng2));
+          b = Math.max(0, Math.min(255, nb2));
+          break;
+        }
+        case 'opacity': {
+          d[i+3] = Math.round(d[i+3] * val);
+          break;
+        }
+        // invert not used in current filters, skip
+      }
+    }
+    d[i] = r; d[i+1] = g; d[i+2] = b;
+  }
+  ctx.putImageData(id, 0, 0);
+  return out.toDataURL('image/jpeg', 0.92);
+}
+
+// roundRect polyfill — always installed to cover:
+//   • browsers that lack it entirely (Firefox < 112, Safari < 15.4, old Chrome)
+//   • browsers with a partial/broken stub
+// Supports a single numeric radius (as used throughout this codebase).
+(function() {
+  function _roundRect(x, y, w, h, r) {
+    r = r || 0;
+    if (w < 2 * r) r = w / 2;
+    if (h < 2 * r) r = h / 2;
+    this.moveTo(x + r, y);
+    this.arcTo(x + w, y,     x + w, y + h, r);
+    this.arcTo(x + w, y + h, x,     y + h, r);
+    this.arcTo(x,     y + h, x,     y,     r);
+    this.arcTo(x,     y,     x + w, y,     r);
+    this.closePath();
+    return this;
+  }
+  // Verify native impl actually works before trusting it
+  try {
+    const _t = document.createElement('canvas').getContext('2d');
+    _t.beginPath();
+    _t.roundRect(0, 0, 10, 10, 2);
+    // If we get here without throwing, native is fine — but still ensure
+    // consistent single-radius call signature across all browsers
+    if (typeof CanvasRenderingContext2D.prototype.roundRect !== 'function') throw 0;
+  } catch(e) {
+    CanvasRenderingContext2D.prototype.roundRect = _roundRect;
+  }
+  // Always ensure our polyfill signature is compatible
+  // (some Chrome versions accept only arrays for radius, not plain numbers)
+  const _native = CanvasRenderingContext2D.prototype.roundRect;
+  CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+    if (typeof r === 'number' || r === undefined) {
+      try { return _native.call(this, x, y, w, h, r || 0); }
+      catch(e) { return _roundRect.call(this, x, y, w, h, r || 0); }
+    }
+    return _native.apply(this, arguments);
+  };
+})();
+
+
+
+let musicPlaying = false;
+let audioCtx = null;
+let musicGain = null;
+let musicNodes = [];
+
+function createAmbientMusic() {
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  musicGain = audioCtx.createGain();
+  musicGain.gain.value = 0.12;
+  musicGain.connect(audioCtx.destination);
+
+  // Generate soft lo-fi-style ambient chords using oscillators
+  const chords = [
+    [261.63, 329.63, 392.00], // C major
+    [293.66, 369.99, 440.00], // D minor
+    [329.63, 415.30, 493.88], // E minor
+    [349.23, 440.00, 523.25], // F major
+  ];
+
+  let chordIdx = 0;
+  const playChord = () => {
+    const chord = chords[chordIdx % chords.length];
+    chordIdx++;
+    chord.forEach(freq => {
+      const osc = audioCtx.createOscillator();
+      const envGain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq / 2; // Octave down for warmth
+      envGain.gain.setValueAtTime(0, audioCtx.currentTime);
+      envGain.gain.linearRampToValueAtTime(0.06, audioCtx.currentTime + 0.4);
+      envGain.gain.linearRampToValueAtTime(0.04, audioCtx.currentTime + 1.5);
+      envGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 2.4);
+      osc.connect(envGain); envGain.connect(musicGain);
+      osc.start(); osc.stop(audioCtx.currentTime + 2.8);
+    });
+  };
+
+  // Gentle pad layer
+  const padOsc = audioCtx.createOscillator();
+  const padGain = audioCtx.createGain();
+  padOsc.type = 'sine';
+  padOsc.frequency.value = 130;
+  padGain.gain.value = 0.04;
+  padOsc.connect(padGain); padGain.connect(musicGain);
+  padOsc.start();
+  musicNodes.push(padOsc);
+
+  // Repeat chord every 2.5s
+  playChord();
+  const chordInterval = setInterval(() => {
+    if (!musicPlaying) { clearInterval(chordInterval); return; }
+    playChord();
+  }, 2500);
+}
+
+function toggleMusic() {
+  if (!musicPlaying) {
+    musicPlaying = true;
+    createAmbientMusic();
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    document.getElementById('musicBtn').textContent = '🎵';
+    document.getElementById('musicBtn').classList.add('playing');
+    updateAdminMusicToggle();
+  } else {
+    musicPlaying = false;
+    if (musicGain) musicGain.gain.setValueAtTime(0, audioCtx.currentTime);
+    document.getElementById('musicBtn').classList.remove('playing');
+    document.getElementById('musicBtn').textContent = '🔇';
+    updateAdminMusicToggle();
+  }
+}
+
+function setMusicVolume(v) {
+  if (musicGain) musicGain.gain.value = v / 100 * 0.3;
+}
+
+function updateAdminMusicToggle() {
+  const t = document.getElementById('musicToggle');
+  if (t) t.classList.toggle('on', musicPlaying);
+}
+
+/* ────────────────────────────────────────
+   ADMIN
+   ──────────────────────────────────────── */
+
+function initAdmin() {
+  pinBuffer = '';
+  // Check if already authenticated this session
+  if (sessionStorage.getItem('lensera_admin_auth') === '1') {
+    showAdminDashboard();
+  } else {
+    document.getElementById('adminPinGate').style.display = 'flex';
+    document.getElementById('adminDashboard').style.display = 'none';
+    updatePinDots();
+  }
+}
+
+function pinKey(k) {
+  if (k === 'back') {
+    pinBuffer = pinBuffer.slice(0, -1);
+  } else if (pinBuffer.length < 4) {
+    pinBuffer += k;
+  }
+  updatePinDots();
+
+  if (pinBuffer.length === 4) {
+    setTimeout(() => {
+      if (pinBuffer === adminPin) {
+        sessionStorage.setItem('lensera_admin_auth', '1');
+        showAdminDashboard();
+      } else {
+        const err = document.getElementById('pinError');
+        err.classList.add('show');
+        setTimeout(() => err.classList.remove('show'), 2000);
+        pinBuffer = '';
+        updatePinDots();
+        // Shake dots
+        const dots = document.getElementById('pinDots');
+        dots.style.animation = 'none'; void dots.offsetWidth;
+        dots.style.transform = 'translateX(-8px)';
+        setTimeout(() => dots.style.transform = '', 200);
+      }
+    }, 150);
+  }
+}
+
+function updatePinDots() {
+  for (let i = 0; i < 4; i++) {
+    document.getElementById('pd' + i)?.classList.toggle('filled', i < pinBuffer.length);
+  }
+}
+
+function showAdminDashboard() {
+  document.getElementById('adminPinGate').style.display = 'none';
+  const dash = document.getElementById('adminDashboard');
+  dash.style.display = 'flex';
+
+  // Stats
+  document.getElementById('statSessions').textContent  = stats.sessions;
+  document.getElementById('statPhotos').textContent    = stats.photos;
+  document.getElementById('statDownloads').textContent = stats.downloads;
+  document.getElementById('statPrints').textContent    = stats.prints;
+  document.getElementById('statRevenue').textContent   = 'Rp' + stats.revenue.toLocaleString('id-ID');
+
+  // Packages
+  const list = document.getElementById('adminPkgList');
+  list.innerHTML = PACKAGES.map(p => `
+    <div class="admin-row">
+      <span class="admin-row-label">${p.name}</span>
+      <input class="admin-input" data-pkgid="${p.id}" value="${p.price}" placeholder="Rp10.000"
+        style="-webkit-user-select:auto;user-select:auto;"
+        onchange="updatePkgPrice('${p.id}', this.value)">
+    </div>
+  `).join('');
+
+  // Music toggle
+  updateAdminMusicToggle();
+}
+
+function updatePkgPrice(pkgId, newPrice) {
+  const pkg = PACKAGES.find(p => p.id === pkgId);
+  if (!pkg) return;
+  pkg.price = newPrice;
+  const num = parseInt(newPrice.replace(/[^0-9]/g, ''));
+  if (!isNaN(num)) pkg.priceNum = num;
+  localStorage.setItem('lensera_packages', JSON.stringify(PACKAGES));
+  renderPackages();
+}
+
+function adminToggleMusic() {
+  toggleMusic();
+}
+
+function adminResetStats() {
+  if (!confirm('Reset semua statistik hari ini?')) return;
+  stats = {sessions:0, photos:0, downloads:0, prints:0, revenue:0};
+  saveStats();
+  showAdminDashboard();
+}
+
+function adminResetAll() {
+  if (!confirm('Reset SEMUA data? (paket & statistik kembali ke default)')) return;
+  localStorage.removeItem('lensera_stats');
+  localStorage.removeItem('lensera_packages');
+  PACKAGES = JSON.parse(JSON.stringify(DEFAULT_PACKAGES));
+  stats = {sessions:0, photos:0, downloads:0, prints:0, revenue:0};
+  renderPackages();
+  showAdminDashboard();
+}
+
+function adminSavePin() {
+  const inp = document.getElementById('newPinInput');
+  const val = inp.value.trim();
+  if (val.length !== 4 || !/^\d+$/.test(val)) {
+    alert('PIN harus 4 digit angka'); return;
+  }
+  adminPin = val;
+  localStorage.setItem('lensera_pin', adminPin);
+  inp.value = '';
+  alert('PIN berhasil diubah ✓');
+}
+
+function adminLogout() {
+  sessionStorage.removeItem('lensera_admin_auth');
+  goTo('home');
 }
 
 /* ────────────────────────────────────────
@@ -1759,26 +2645,14 @@ function printStrip() {
 
 function restartSession() {
   clearInterval(state.timerInterval);
-  if (state.stream) {
-    state.stream.getTracks().forEach(t => t.stop());
-    state.stream = null;
-  }
-  webcamActive  = false;
-  dslrConnected = false;
-  cameraMode    = 'demo';
-
-  document.getElementById('camVideo').style.display      = 'none';
-  document.getElementById('dslrLiveView').style.display  = 'none';
+  if (state.stream) { state.stream.getTracks().forEach(t => t.stop()); state.stream = null; }
+  webcamActive = false; dslrConnected = false; cameraMode = 'demo';
+  document.getElementById('camVideo').style.display       = 'none';
+  document.getElementById('dslrLiveView').style.display   = 'none';
   document.getElementById('camPlaceholder').style.display = 'flex';
   document.getElementById('camModeBtn').textContent = '📷 Webcam';
   document.getElementById('camModeBtn').classList.remove('active-mode');
-
-  state = {
-    pkg: null, capturedPhotos: [], selectedPhotos: [],
-    selectedFrame: null, timerInterval: null, timeLeft: 180,
-    stream: null, counting: false
-  };
-
+  state = { pkg:null, capturedPhotos:[], selectedPhotos:[], selectedFrame:null, selectedFilter:'none', timerInterval:null, timeLeft:180, stream:null, counting:false };
   goTo('home');
 }
 
@@ -1787,19 +2661,15 @@ function restartSession() {
    ──────────────────────────────────────── */
 renderPackages();
 
-// Fullscreen otomatis saat klik (untuk tablet)
 document.addEventListener('click', () => {
-  if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
+  if (document.documentElement.requestFullscreen && !document.fullscreenElement)
     document.documentElement.requestFullscreen().catch(() => {});
-  }
-}, { once: true });
+  // Resume audio context on first interaction
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+}, { once: false });
 
-// Cegah close/refresh tidak sengaja
 window.addEventListener('beforeunload', e => {
-  if (state.pkg) {
-    e.preventDefault();
-    e.returnValue = '';
-  }
+  if (state.pkg) { e.preventDefault(); e.returnValue = ''; }
 });
 
 </script>
