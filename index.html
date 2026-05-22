@@ -1566,7 +1566,7 @@ html, body {
 const VERCEL_URL = 'https://lensera-fotobooth.vercel.app';
 
 // ← Daftar gratis di https://api.imgbb.com lalu paste API key di sini
-const IMGBB_API_KEY = '';
+const IMGBB_API_KEY = '2e0b4ce0f2bcf42efd4631b458713783';
 
 const DEFAULT_PACKAGES = [
   { id:'basic',  name:'Basic',  price:'Rp10.000', priceNum:10000, photos:3,  frames:1,  time:180, featured:false, badge:null },
@@ -2126,7 +2126,7 @@ function buildStripCanvas(onDone) {
     ? state.selectedPhotos.slice(0, 4).map(i => state.capturedPhotos[i])
     : state.capturedPhotos.slice(0, 4);
 
-  if (photos.length === 0) return null;
+  if (photos.length === 0) { onDone(null); return; }
 
   const W     = 640;
   const PH    = 480;
@@ -2143,8 +2143,23 @@ function buildStripCanvas(onDone) {
   drawFrameDecoration(ctx, frame, W, H, PAD, photos.length, PH);
 
   let loaded = 0;
+  const _checkDone = () => {
+    loaded++;
+    if (loaded === photos.length) {
+      ctx.fillStyle = frame.textColor;
+      ctx.font = 'italic 22px Georgia, serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('✦  LENSERA  ✦', W/2, H - 26);
+      ctx.font = '12px DM Sans, sans-serif';
+      ctx.fillStyle = (frame.textColor || '#999') + '88';
+      ctx.fillText(new Date().toLocaleDateString('id-ID', {day:'2-digit',month:'short',year:'numeric'}), W/2, H - 10);
+      onDone(canvas);
+    }
+  };
   photos.forEach((src, i) => {
     const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onerror = () => { _checkDone(); };
     img.onload = () => {
       const y      = PAD + i * (PH + PAD);
       const innerW = W - PAD * 2;
@@ -2175,17 +2190,7 @@ function buildStripCanvas(onDone) {
       }
       if (frame.borderStyle === 'film') drawFilmHoles(ctx, y, PH, W, frame.accent);
 
-      loaded++;
-      if (loaded === photos.length) {
-        ctx.fillStyle = frame.textColor;
-        ctx.font = 'italic 22px Georgia, serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('✦  LENSERA  ✦', W/2, H - 26);
-        ctx.font = '12px DM Sans, sans-serif';
-        ctx.fillStyle = (frame.textColor || '#999') + '88';
-        ctx.fillText(new Date().toLocaleDateString('id-ID', {day:'2-digit',month:'short',year:'numeric'}), W/2, H - 10);
-        onDone(canvas);
-      }
+      _checkDone();
     };
     img.src = src;
   });
